@@ -8,32 +8,22 @@ import (
 	"net/http"
 )
 
-type IpAddress struct {
-	Address string `json:"origin"`
-}
-
-type Headers struct {
-	Headers map[string]string `json:"headers"`
-}
-
-type UserAgent struct {
-	UserAgent string `json:"user-agent"`
-}
-
 func IpServer(w http.ResponseWriter, r *http.Request) {
 	address := strings.Split(r.RemoteAddr, ":")[0]
-	result := IpAddress{Address: address}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(result)
+	encoder.Encode(struct{
+		A string `json:"origin"`
+	}{A: address})
 }
 
 func UserAgentServer(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.Header.Get("user-agent")
-	result := UserAgent{UserAgent: userAgent}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(result)
+	encoder.Encode(struct {
+		UA string `json:"user-agent"`
+	}{UA: userAgent})
 }
 
 func HeadersServer(w http.ResponseWriter, r *http.Request) {
@@ -42,10 +32,11 @@ func HeadersServer(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(k , array)
 		headers[k] = strings.Join(array, ",")
 	}
-	result := Headers{Headers: headers}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(result)
+	encoder.Encode(struct{
+		H map[string]string `json:"headers"`
+	}{H: headers})
 }
 
 func PlayerServer(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +53,7 @@ func PlayerServer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newAppMux() *http.ServeMux {
+func newAppMux() http.Handler{
 	router := http.NewServeMux()
 	router.HandleFunc("GET /players/{player}", PlayerServer)
 	router.HandleFunc("GET /ip", IpServer)
