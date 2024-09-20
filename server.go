@@ -1,18 +1,18 @@
 package main
 
 import (
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
+	"strings"
 )
 
 func IpServer(w http.ResponseWriter, r *http.Request) {
 	address := strings.Split(r.RemoteAddr, ":")[0]
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(struct{
+	encoder.Encode(struct {
 		A string `json:"origin"`
 	}{A: address})
 }
@@ -29,14 +29,60 @@ func UserAgentServer(w http.ResponseWriter, r *http.Request) {
 func HeadersServer(w http.ResponseWriter, r *http.Request) {
 	headers := make(map[string]string)
 	for k, array := range r.Header {
-		fmt.Println(k , array)
 		headers[k] = strings.Join(array, ",")
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
-	encoder.Encode(struct{
+	encoder.Encode(struct {
 		H map[string]string `json:"headers"`
 	}{H: headers})
+}
+
+func DeleteServer(w http.ResponseWriter, r *http.Request) {
+	args := make(map[string]interface{})
+	files := make(map[string]interface{})
+	form := make(map[string]interface{})
+	headers := make(map[string]string)
+	origin := strings.Split(r.RemoteAddr, ":")[0]
+	url := r.URL.String()
+	for k, array := range r.URL.Query() {
+		if len(array) == 1 {
+			args[k] = array[0]
+		} else {
+			args[k] = array
+		}
+	}
+	for k, array := range r.PostForm {
+		if len(array) == 1 {
+			form[k] = array[0]
+		} else {
+			form[k] = array
+		}
+	}
+	for k, array := range r.Header {
+		headers[k] = strings.Join(array, ";")
+	}
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	encoder.Encode(struct {
+		Args    map[string]interface{} `json:"args"`
+		Data    string                 `json:"data"`
+		Files   map[string]interface{} `json:"files"`
+		Form    map[string]interface{} `json:"form"`
+		Headers map[string]string      `json:"headers"`
+		Json    interface{}            `json:"json"`
+		Origin  string                 `json:"origin"`
+		Url     string                 `json:"url"`
+	}{
+		Args:    args,
+		Data:    "",
+		Files:   files,
+		Form:    form,
+		Headers: headers,
+		Json:    nil,
+		Origin:  origin,
+		Url:     url,
+	})
 }
 
 func PlayerServer(w http.ResponseWriter, r *http.Request) {
@@ -53,12 +99,13 @@ func PlayerServer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newAppMux() http.Handler{
+func newAppMux() http.Handler {
 	router := http.NewServeMux()
 	router.HandleFunc("GET /players/{player}", PlayerServer)
 	router.HandleFunc("GET /ip", IpServer)
 	router.HandleFunc("GET /headers", HeadersServer)
 	router.HandleFunc("GET /user-agent", UserAgentServer)
+	router.HandleFunc("DELETE /delete", DeleteServer)
 	return router
 }
 
